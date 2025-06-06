@@ -124,6 +124,7 @@ func function() {
         ```swift
         import SwiftSyntax
         import SwiftSyntaxMacros
+        import SwiftCompilerPlugin
         import SwiftUI
         
         public struct HexColorMacro: ExpressionMacro {
@@ -154,6 +155,13 @@ func function() {
                 return "Color(red: \(red), green: \(green), blue: \(blue))"
             }
         }
+        
+        @main
+        struct MyFirstMacroPlugin: CompilerPlugin {
+            let providingMacros: [Macro.Type] = [
+                HexColorMacro.self
+            ]
+        }
         ```
         
     - 매크로 사용
@@ -165,15 +173,112 @@ func function() {
         ```
         
 
-### `@freestanding(**declaration**)`
+### **`@freestanding**(declaration, names: arbitrary)`
 
 - 함수, 변수 또는 타입과 같은 하나 이상의 선언으로 확장함.
     - 즉, 이 매크로를 쓰면 함수나 변수, 타입등을 자동으로 선언함
+- 함수, 변수, 타입등을 생성하므로 names를 정의해줘야함
+    - TODO: name specifier 공부
 - **예시**
     - 매크로 선언
         
         ```swift
+        @freestanding(declaration, names: arbitrary)
+        public macro AddHelloStructMacro() = #externalMacro(
+            module: "MyFirstMacroMacros",
+            type: "AddHelloStructMacro"
+        )
         
+        @freestanding(declaration, names: arbitrary)
+        public macro AddHelloVariableMacro() = #externalMacro(
+            module: "MyFirstMacroMacros",
+            type: "AddHelloVariableMacro"
+        )
+        
+        @freestanding(declaration, names: arbitrary)
+        public macro AddHelloFunc() = #externalMacro(
+            module: "MyFirstMacroMacros",
+            type: "AddHelloFuncMacro"
+        )
+        ```
+        
+    - 매크로 구현
+        
+        ```swift
+        import SwiftSyntax
+        import SwiftCompilerPlugin
+        import SwiftSyntaxMacros
+        
+        /// 구조체를 선언하는 매크로
+        public struct AddHelloStructMacro: DeclarationMacro {
+            public static func expansion(
+                of node: some SwiftSyntax.FreestandingMacroExpansionSyntax,
+                in context: some SwiftSyntaxMacros.MacroExpansionContext
+            ) throws -> [SwiftSyntax.DeclSyntax] {
+                let function = """
+                struct Hello { }
+                """
+                return [DeclSyntax(stringLiteral: function)]
+            }
+        }
+        
+        /// 변수를 선언하는 매크로
+        public struct AddHelloVariableMacro: DeclarationMacro {
+            public static func expansion(
+                of node: some SwiftSyntax.FreestandingMacroExpansionSyntax,
+                in context: some SwiftSyntaxMacros.MacroExpansionContext
+            ) throws -> [SwiftSyntax.DeclSyntax] {
+                let function = """
+                var hello: String = "hello"
+                """
+                return [DeclSyntax(stringLiteral: function)]
+            }
+        }
+        
+        /// 함수를 선언하는 매크로
+        public struct AddHelloFuncMacro: DeclarationMacro {
+            public static func expansion(
+                of node: some SwiftSyntax.FreestandingMacroExpansionSyntax,
+                in context: some SwiftSyntaxMacros.MacroExpansionContext
+            ) throws -> [SwiftSyntax.DeclSyntax] {
+                let function = """
+                func sayHello() {
+                    print("Hello from macro!")
+                }
+                """
+                return [DeclSyntax(stringLiteral: function)]
+            }
+        }
+        
+        @main
+        struct MyFirstMacroPlugin: CompilerPlugin {
+            let providingMacros: [Macro.Type] = [
+                AddHelloStructMacro.self,
+                AddHelloVariableMacro.self,
+                AddHelloFuncMacro.self
+            ]
+        }
+        ```
+        
+    - 매크로 사용
+        
+        ```swift
+        import MyFirstMacro
+        
+        struct Man {
+            #AddHelloStructMacro
+            #AddHelloVariableMacro
+            #AddHelloFunc
+        }
+        
+        // AddHelloStructMacro 매크로에서 생성된 객체(Hello) 생성
+        let mansGreeting = Man.Hello()
+        
+        // AddHelloStructMacro 매크로에서 생성된 변수(hello) 호출
+        let mansGreetingWords = Man().hello
+        
+        // AddHelloFunc 매크로에서 생성된 함수(sayHello) 호출
+        Man().sayHello()
         ```
         
 
